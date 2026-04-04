@@ -53,6 +53,7 @@ jobs:
             npx cdk deploy "$STACK" --require-approval never
           else
             npx cdk deploy --all --require-approval never
+          fi
         env:
           # Pass any app-level env vars your CDK app reads at synth time
           NODE_ENV: production
