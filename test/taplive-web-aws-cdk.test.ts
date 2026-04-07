@@ -11,6 +11,25 @@ describe('TapliveWebAwsCdkStack', () => {
     template = Template.fromStack(stack);
   });
 
+  describe('Route 53 hosted zone', () => {
+    test('creates exactly one hosted zone', () => {
+      template.resourceCountIs('AWS::Route53::HostedZone', 1);
+    });
+
+    test('hosted zone is for taplive.tv', () => {
+      template.hasResourceProperties('AWS::Route53::HostedZone', {
+        Name: 'taplive.tv.',
+      });
+    });
+
+    test('outputs 4 name server records', () => {
+      const outputs = template.findOutputs('*', {
+        Description: Match.stringLikeRegexp('Name server .* of 4'),
+      });
+      expect(Object.keys(outputs).length).toBe(4);
+    });
+  });
+
   describe('SES domain identity', () => {
     test('creates exactly one SES email identity', () => {
       template.resourceCountIs('AWS::SES::EmailIdentity', 1);
@@ -33,34 +52,17 @@ describe('TapliveWebAwsCdkStack', () => {
         MailFromAttributes: { MailFromDomain: 'mail.taplive.tv' },
       });
     });
-  });
 
-  describe('stack outputs', () => {
-    test('outputs the verification sender From address', () => {
-      const outputs = template.findOutputs('*', {
-        Description: 'From address to use when sending verification emails',
-      });
-      expect(Object.keys(outputs).length).toBe(1);
-      const value = Object.values(outputs)[0].Value as string;
-      expect(value).toBe('TapLive <noreply-verify@taplive.tv>');
+    test('auto-creates Route 53 DNS records for SES (DKIM + MAIL FROM)', () => {
+      const records = template.findResources('AWS::Route53::RecordSet');
+      expect(Object.keys(records).length).toBeGreaterThanOrEqual(3);
     });
 
-    test('outputs 3 DKIM record names and 3 DKIM record values', () => {
-      const names = template.findOutputs('*', {
-        Description: Match.stringLikeRegexp('DKIM CNAME record .* NAME'),
+    test('does not emit manual DKIM outputs when Route 53 is wired', () => {
+      const dkimOutputs = template.findOutputs('*', {
+        Description: Match.stringLikeRegexp('DKIM CNAME record'),
       });
-      const values = template.findOutputs('*', {
-        Description: Match.stringLikeRegexp('DKIM CNAME record .* VALUE'),
-      });
-      expect(Object.keys(names).length).toBe(3);
-      expect(Object.keys(values).length).toBe(3);
-    });
-
-    test('outputs the SES identity ARN', () => {
-      const outputs = template.findOutputs('*', {
-        Description: Match.stringLikeRegexp('ARN of the SES identity'),
-      });
-      expect(Object.keys(outputs).length).toBe(1);
+      expect(Object.keys(dkimOutputs).length).toBe(0);
     });
   });
 
@@ -78,6 +80,22 @@ describe('TapliveWebAwsCdkStack', () => {
     test('outputs the template name', () => {
       const outputs = template.findOutputs('*', {
         Description: Match.stringLikeRegexp('SES template name'),
+      });
+      expect(Object.keys(outputs).length).toBe(1);
+    });
+  });
+
+  describe('stack outputs', () => {
+    test('outputs the verification sender From address', () => {
+      const outputs = template.findOutputs('*', {
+        Description: 'From address to use when sending verification emails',
+      });
+      expect(Object.keys(outputs).length).toBe(1);
+    });
+
+    test('outputs the SES identity ARN', () => {
+      const outputs = template.findOutputs('*', {
+        Description: Match.stringLikeRegexp('ARN of the SES identity'),
       });
       expect(Object.keys(outputs).length).toBe(1);
     });

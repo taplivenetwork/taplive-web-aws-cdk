@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib/core';
 import { Construct } from 'constructs';
+import { Route53HostedZone } from './route53-hosted-zone';
 import { SesDomainIdentity } from './ses-domain-identity';
 import { SesEmailSender } from './ses-email-sender';
 
@@ -7,12 +8,24 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // ── Route 53 hosted zone ─────────────────────────────────────────────────
+    // After first deploy, copy the 4 NS values from stack outputs and paste
+    // them as name servers in your domain registrar. One-time step.
+    const dns = new Route53HostedZone(this, 'TapliveHostedZone', {
+      zoneName: 'taplive.tv',
+    });
+
+    // ── SES domain identity ──────────────────────────────────────────────────
+    // Passing the hosted zone lets CDK auto-create all DNS records:
+    // DKIM CNAMEs, MAIL FROM MX record, MAIL FROM SPF TXT record.
     new SesDomainIdentity(this, 'TapliveSesIdentity', {
       domainName: 'taplive.tv',
       dkimSigning: true,
       mailFromSubdomain: 'mail',
+      hostedZone: dns.hostedZone,
     });
 
+    // ── Verification email sender ────────────────────────────────────────────
     new SesEmailSender(this, 'TapliveVerifySender', {
       domainName: 'taplive.tv',
       fromName: 'TapLive',
