@@ -56,7 +56,8 @@ export class BackendDatabase extends Construct {
       credentials: rds.Credentials.fromGeneratedSecret('taplive_admin', {
         secretName: `${props.stackName}/backend/rds-credentials`,
       }),
-      backupRetention: cdk.Duration.days(7),
+      // Keep retention minimal to avoid free-tier/account-plan limits.
+      backupRetention: cdk.Duration.days(1),
       cloudwatchLogsExports: ['postgresql'],
       monitoringInterval: cdk.Duration.seconds(60),
       deletionProtection: false,
