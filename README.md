@@ -15,3 +15,21 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
  **Do not use this command to directly deploy to AWS. Only github workflow should be used to deploy to AWS.**
 
 * `npx cdk deploy`  deploy this stack to your default AWS account/region
+
+## Backend API foundations (sub-issue 0.3)
+
+This stack now includes a reusable backend foundation construct that provisions:
+
+- API Gateway REST API (`v1` stage) with CORS enabled
+- API Gateway gateway responses for default 4xx/5xx and unauthorized errors
+- Shared base Lambda execution role (CloudWatch Logs + RDS + Secrets Manager read)
+- Secrets Manager secret placeholder for DB and third-party credentials
+- Health check Lambda exposed at `GET /v1/health`
+- CloudWatch Log Group for the health Lambda
+
+### REST API naming conventions
+
+- Use stage for major API versioning (for now: `/v1`)
+- Use lowercase noun resources (example: `/health`, `/users`, `/sessions`)
+- Use HTTP methods for action semantics (`GET`, `POST`, `PATCH`, `DELETE`)
+- Keep endpoints resource-oriented and avoid verb-style paths

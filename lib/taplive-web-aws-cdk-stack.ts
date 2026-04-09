@@ -3,11 +3,12 @@ import { Construct } from 'constructs';
 import { Route53HostedZone } from './route53-hosted-zone';
 import { SesDomainIdentity } from './ses-domain-identity';
 import { SesEmailSender } from './ses-email-sender';
+import { BackendApiFoundation } from './backend-api-foundation';
 
 export class TapliveWebAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-
+    
     // ── Route 53 hosted zone ─────────────────────────────────────────────────
     // After first deploy, copy the 4 NS values from stack outputs and paste
     // them as name servers in your domain registrar. One-time step.
@@ -45,6 +46,12 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
         `,
         textBody: 'Hi {{name}}, your TapLive verification code is {{code}}. It expires in 10 minutes.',
       },
+    });
+
+    // ── Backend API foundation ───────────────────────────────────────────────
+    new BackendApiFoundation(this, 'TapliveBackendApiFoundation', {
+      apiName: 'TapliveBackendApi',
+      corsAllowedOrigins: ['*'],
     });
   }
 }
