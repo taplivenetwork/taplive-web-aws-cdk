@@ -5,6 +5,7 @@
     "taplive-web-aws-cdk": "bin/taplive-web-aws-cdk.js"
   },
   "scripts": {
+    "clean": "rimraf dist",
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
@@ -13,9 +14,10 @@
   "devDependencies": {
     "@types/jest": "^30",
     "@types/node": "^24.10.1",
-    "jest": "^30",
-    "ts-jest": "^29",
     "aws-cdk": "2.1116.0",
+    "jest": "^30",
+    "rimraf": "^6.1.3",
+    "ts-jest": "^29",
     "ts-node": "^10.9.2",
     "typescript": "~5.9.3"
   },
