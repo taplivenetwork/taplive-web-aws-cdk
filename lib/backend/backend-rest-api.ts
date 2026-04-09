@@ -1,4 +1,5 @@
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
@@ -13,6 +14,19 @@ export class BackendRestApi extends Construct {
 
   constructor(scope: Construct, id: string, props: BackendRestApiProps) {
     super(scope, id);
+
+    // Account-wide: API Gateway uses this role to write execution logs to CloudWatch.
+    // Only one AWS::ApiGateway::Account per region/account; other stacks may already own it.
+    const cloudWatchLogsRole = new iam.Role(this, 'ApiGatewayCloudWatchRole', {
+      assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs'),
+      ],
+    });
+
+    const apiGatewayAccount = new apigateway.CfnAccount(this, 'ApiGatewayAccount', {
+      cloudWatchRoleArn: cloudWatchLogsRole.roleArn,
+    });
 
     this.restApi = new apigateway.RestApi(this, 'BackendRestApi', {
       restApiName: props.apiName,
@@ -29,6 +43,8 @@ export class BackendRestApi extends Construct {
         allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
       },
     });
+
+    this.restApi.node.addDependency(apiGatewayAccount);
 
     const healthResource = this.restApi.root.addResource('health');
     healthResource.addMethod('GET', new apigateway.LambdaIntegration(props.healthFunction, {
