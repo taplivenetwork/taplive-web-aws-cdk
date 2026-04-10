@@ -4,6 +4,7 @@ import { Route53HostedZone } from './route53-hosted-zone';
 import { SesDomainIdentity } from './ses-domain-identity';
 import { SesEmailSender } from './ses-email-sender';
 import { BackendApiFoundation } from './backend-api-foundation';
+import { CognitoUserAuth } from './cognito-user-auth';
 
 export class TapliveWebAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -46,6 +47,15 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
         `,
         textBody: 'Hi {{name}}, your TapLive verification code is {{code}}. It expires in 10 minutes.',
       },
+    });
+
+    // ── Cognito user auth ─────────────────────────────────────────────────────
+    // Sign-up flow: SignUp -> email code sent by Cognito -> ConfirmSignUp.
+    new CognitoUserAuth(this, 'TapliveCognitoAuth', {
+      userPoolName: 'TapliveUsers',
+      userPoolClientName: 'TapliveWebClient',
+      verificationEmailSubject: 'Your TapLive verification code',
+      verificationEmailBody: 'Use this code to verify your TapLive account: {####}',
     });
 
     // ── Backend API foundation ───────────────────────────────────────────────

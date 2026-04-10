@@ -16,6 +16,8 @@ describe('TapliveWebAwsCdkStack', () => {
       template.resourceCountIs('AWS::Route53::HostedZone', 1);
       template.resourceCountIs('AWS::SES::EmailIdentity', 1);
       template.resourceCountIs('AWS::SES::Template', 1);
+      template.resourceCountIs('AWS::Cognito::UserPool', 1);
+      template.resourceCountIs('AWS::Cognito::UserPoolClient', 1);
       template.resourceCountIs('AWS::ApiGateway::RestApi', 1);
       template.resourceCountIs('AWS::Lambda::Function', 1);
       template.resourceCountIs('AWS::SecretsManager::Secret', 2);
