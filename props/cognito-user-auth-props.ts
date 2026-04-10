@@ -11,6 +11,13 @@ export interface CognitoUserAuthProps {
    */
   readonly userPoolClientName?: string;
 
+  // Keep Cognito default email sending while SES production access is pending.
+  // /**
+  //  * From email address used by Cognito via SES.
+  //  * @default noreply-verify@taplive.tv
+  //  */
+  // readonly verificationFromEmail?: string;
+
   /**
    * Verification email subject sent by Cognito.
    * @default Verify your TapLive account

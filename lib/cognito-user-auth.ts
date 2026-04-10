@@ -17,6 +17,12 @@ export class CognitoUserAuth extends Construct {
 
     this.userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: props.userPoolName ?? 'TapliveUsers',
+      // Keep Cognito default email sending while SES production access is pending.
+      // email: cognito.UserPoolEmail.withSES({
+      //   fromEmail: props.verificationFromEmail ?? 'noreply-verify@taplive.tv',
+      //   fromName: 'TapLive',
+      //   sesRegion: cdk.Stack.of(this).region,
+      // }),
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,

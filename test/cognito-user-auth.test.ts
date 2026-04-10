@@ -55,6 +55,11 @@ describe('CognitoUserAuth', () => {
   test('uses verification code email configuration', () => {
     const { template } = makeAuth();
     template.hasResourceProperties('AWS::Cognito::UserPool', {
+      // Re-enable this block when switching user pool email to SES:
+      // EmailConfiguration: {
+      //   EmailSendingAccount: 'DEVELOPER',
+      //   From: 'TapLive <noreply-verify@taplive.tv>',
+      // },
       VerificationMessageTemplate: {
         DefaultEmailOption: 'CONFIRM_WITH_CODE',
         EmailMessage: 'Use this code to verify your TapLive account: {####}',
