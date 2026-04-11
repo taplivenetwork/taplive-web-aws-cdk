@@ -22,6 +22,9 @@ describe('TapliveWebAwsCdkStack', () => {
       template.resourceCountIs('AWS::Lambda::Function', 1);
       template.resourceCountIs('AWS::SecretsManager::Secret', 2);
       template.resourceCountIs('AWS::RDS::DBInstance', 1);
+      template.resourceCountIs('AWS::Amplify::App', 1);
+      template.resourceCountIs('AWS::Amplify::Branch', 1);
+      template.resourceCountIs('AWS::Amplify::Domain', 1);
     });
 
     test('emits foundational outputs required by consumers', () => {
@@ -36,6 +39,9 @@ describe('TapliveWebAwsCdkStack', () => {
       })).length).toBe(1);
       expect(Object.keys(template.findOutputs('*', {
         Description: 'Health check endpoint URL',
+      })).length).toBe(1);
+      expect(Object.keys(template.findOutputs('*', {
+        Description: 'Amplify app ID (hosting)',
       })).length).toBe(1);
     });
 
