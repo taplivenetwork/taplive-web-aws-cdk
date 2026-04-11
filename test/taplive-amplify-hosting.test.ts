@@ -138,6 +138,52 @@ describe('TapliveAmplifyHosting', () => {
     });
   });
 
+  test('uses JSON field in secret for GitHub PAT when githubAccessTokenSecretJsonField is set', () => {
+    const app = new cdk.App();
+    const stack = new cdk.Stack(app, 'GitJsonTestStack', {
+      env: { account: '123456789012', region: 'eu-central-1' },
+    });
+    const userPool = new cognito.UserPool(stack, 'Pool');
+    const client = userPool.addClient('Cli');
+    const githubSecret = secretsmanager.Secret.fromSecretNameV2(stack, 'AppSecrets', 'taplive/backend/app-secrets');
+
+    new TapliveAmplifyHosting(stack, 'Hosting', {
+      domainName: 'taplive.tv',
+      userPool,
+      userPoolClient: client,
+      backendApiUrl: 'https://x.example.com/',
+      repositoryUrl: 'https://github.com/org/taplive-web.git',
+      githubAccessTokenSecret: githubSecret,
+      githubAccessTokenSecretJsonField: 'AMPLIFY_GITHUB_PAT_JSON_KEY',
+    });
+
+    const template = Template.fromStack(stack);
+    const resources = template.toJSON().Resources as Record<string, { Type: string; Properties?: { AccessToken?: unknown } }>;
+    const amplifyApp = Object.values(resources).find((r) => r.Type === 'AWS::Amplify::App');
+    expect(amplifyApp?.Properties?.AccessToken).toBeDefined();
+    expect(JSON.stringify(amplifyApp?.Properties?.AccessToken)).toContain('AMPLIFY_GITHUB_PAT_JSON_KEY');
+    expect(JSON.stringify(amplifyApp?.Properties?.AccessToken)).toContain('SecretString');
+  });
+
+  test('throws when githubAccessTokenSecretJsonField is set without githubAccessTokenSecret', () => {
+    const app = new cdk.App();
+    const stack = new cdk.Stack(app, 'ThrowJsonTestStack', {
+      env: { account: '123456789012', region: 'eu-central-1' },
+    });
+    const userPool = new cognito.UserPool(stack, 'Pool');
+    const client = userPool.addClient('Cli');
+
+    expect(() => {
+      new TapliveAmplifyHosting(stack, 'Hosting', {
+        domainName: 'taplive.tv',
+        userPool,
+        userPoolClient: client,
+        backendApiUrl: 'https://x.example.com/',
+        githubAccessTokenSecretJsonField: 'pat',
+      });
+    }).toThrow(/githubAccessTokenSecret is required when githubAccessTokenSecretJsonField is set/);
+  });
+
   test('honors appName, productionBranchName, and artifactBaseDirectory overrides', () => {
     const { template } = makeHosting({
       appName: 'CustomApp',
