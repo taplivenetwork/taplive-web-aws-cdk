@@ -1,5 +1,4 @@
 import * as cdk from 'aws-cdk-lib/core';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 import { Route53HostedZone } from './route53-hosted-zone';
 import { SesDomainIdentity } from './ses-domain-identity';
@@ -10,6 +9,9 @@ import { TapliveAmplifyHosting } from './taplive-amplify-hosting';
 
 /** Default frontend repo; production branch is `main` (see TapliveAmplifyHosting). */
 const DEFAULT_TAPLIVE_WEB_REPOSITORY_URL = 'https://github.com/taplivenetwork/taplive-web-new.git';
+
+/** JSON field in `{stackName}/backend/app-secrets` for the GitHub PAT (Amplify repo access). */
+const AMPLIFY_GITHUB_PAT_JSON_KEY = 'AMPLIFY_GITHUB_PAT_JSON_KEY';
 
 export class TapliveWebAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -70,17 +72,15 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
     });
 
     // ── Amplify Hosting (frontend) ───────────────────────────────────────────
-    // Default repo: taplivenetwork/taplive-web-new (branch main). Repository URL is passed to
-    // Amplify only when amplifyGitHubTokenSecretArn is set (PAT in Secrets Manager); otherwise
-    // connect the same repo in the Amplify console after deploy.
-    //   cdk deploy -c amplifyGitHubTokenSecretArn=arn:aws:secretsmanager:...
-    // Optional override: -c amplifyRepositoryUrl=https://github.com/other/repo.git
+    // Default repo: taplivenetwork/taplive-web-new (branch main). GitHub is wired when:
+    //   -c amplifyConnectGitHub=true  → PAT from backend app-secrets JSON field `AMPLIFY_GITHUB_PAT_JSON_KEY`
+    // Optional: -c amplifyRepositoryUrl=https://github.com/other/repo.git
     const amplifyRepoOverride = this.node.tryGetContext('amplifyRepositoryUrl') as string | undefined;
-    const amplifyTokenArn = this.node.tryGetContext('amplifyGitHubTokenSecretArn') as string | undefined;
-    const amplifyGithubToken =
-      amplifyTokenArn !== undefined && amplifyTokenArn !== ''
-        ? secretsmanager.Secret.fromSecretCompleteArn(this, 'AmplifyGitHubToken', amplifyTokenArn)
-        : undefined;
+    const connectAmplifyGitHubRaw = this.node.tryGetContext('amplifyConnectGitHub');
+    const connectAmplifyGitHub =
+      connectAmplifyGitHubRaw === true || connectAmplifyGitHubRaw === 'true';
+
+    const amplifyGithubToken = connectAmplifyGitHub ? backend.appSecrets : undefined;
 
     const amplifyRepositoryUrl =
       amplifyGithubToken !== undefined
@@ -100,6 +100,7 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
       backendApiUrl: backend.restApi.url,
       repositoryUrl: amplifyRepositoryUrl,
       githubAccessTokenSecret: amplifyGithubToken,
+      githubAccessTokenSecretJsonField: connectAmplifyGitHub ? AMPLIFY_GITHUB_PAT_JSON_KEY : undefined,
       enableCustomDomainAssociation: amplifyEnableCustomDomain,
     });
   }

@@ -18,10 +18,16 @@ export interface TapliveAmplifyHostingProps {
    */
   readonly repositoryUrl?: string;
   /**
-   * Secrets Manager secret whose **string value** is a GitHub personal access token with repo access.
+   * Secrets Manager secret for the GitHub personal access token.
+   * - If `githubAccessTokenSecretJsonField` is omitted, the secret's **entire string** must be the PAT.
+   * - If `githubAccessTokenSecretJsonField` is set, the secret must be **JSON** and the PAT is read from that key.
    * Required when `repositoryUrl` is set.
    */
   readonly githubAccessTokenSecret?: secretsmanager.ISecret;
+  /**
+   * JSON field name in `githubAccessTokenSecret` whose string value is the GitHub PAT (e.g. `AMPLIFY_GITHUB_PAT_JSON_KEY`).
+   */
+  readonly githubAccessTokenSecretJsonField?: string;
   /**
    * Amplify artifacts `baseDirectory` (default `.next` for Next.js on Amplify Hosting).
    * Use `out` if the app uses `output: 'export'` only.

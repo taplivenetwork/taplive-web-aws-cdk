@@ -52,12 +52,25 @@ export class TapliveAmplifyHosting extends Construct {
       );
     }
 
+    const jsonField = props.githubAccessTokenSecretJsonField?.trim();
+    if (jsonField && !props.githubAccessTokenSecret) {
+      throw new Error(
+        'TapliveAmplifyHosting: githubAccessTokenSecret is required when githubAccessTokenSecretJsonField is set.',
+      );
+    }
+
     const stack = cdk.Stack.of(this);
     const region = stack.region;
 
     const buildSpec = amplifyBuildSpec(artifactDir);
 
     const gitHubConnected = Boolean(repoUrl && props.githubAccessTokenSecret);
+
+    const githubAccessTokenValue = props.githubAccessTokenSecret
+      ? jsonField
+        ? props.githubAccessTokenSecret.secretValueFromJson(jsonField).unsafeUnwrap()
+        : props.githubAccessTokenSecret.secretValue.unsafeUnwrap()
+      : undefined;
 
     const appProps: amplify.CfnAppProps = {
       name: appName,
@@ -66,7 +79,7 @@ export class TapliveAmplifyHosting extends Construct {
       ...(gitHubConnected
         ? {
             repository: repoUrl,
-            accessToken: props.githubAccessTokenSecret!.secretValue.unsafeUnwrap(),
+            accessToken: githubAccessTokenValue!,
           }
         : {}),
     };
