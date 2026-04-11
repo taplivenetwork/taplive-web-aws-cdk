@@ -91,6 +91,8 @@ export class TapliveAmplifyHosting extends Construct {
     });
 
     if (enableDomain) {
+      // Omit CertificateSettings: explicit AMPLIFY_MANAGED has caused API 400s ("custom certificate"
+      // without ARN). Default behavior is still Amplify-provisioned TLS when unset.
       this.domain = new amplify.CfnDomain(this, 'AmplifyDomain', {
         appId: this.app.attrAppId,
         domainName: props.domainName,
@@ -98,9 +100,6 @@ export class TapliveAmplifyHosting extends Construct {
           { branchName, prefix: '' },
           { branchName, prefix: 'www' },
         ],
-        certificateSettings: {
-          certificateType: 'AMPLIFY_MANAGED',
-        },
       });
       this.domain.node.addDependency(this.branch);
     }

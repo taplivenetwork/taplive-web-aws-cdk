@@ -56,9 +56,6 @@ describe('TapliveAmplifyHosting', () => {
         { BranchName: 'main', Prefix: '' },
         { BranchName: 'main', Prefix: 'www' },
       ],
-      CertificateSettings: {
-        CertificateType: 'AMPLIFY_MANAGED',
-      },
     });
   });
 
