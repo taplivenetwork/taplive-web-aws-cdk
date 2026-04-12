@@ -10,6 +10,11 @@ on:
         description: "taplive-web-stack"
         required: false
         default: ""
+      force_amplify_cdk:
+        description: "Ignore hosted-app detection; always pass amplifyConnectGitHub (e.g. recreate Amplify via CDK)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   id-token: write   # Required for OIDC
@@ -20,6 +25,10 @@ jobs:
     name: CDK Deploy
     runs-on: ubuntu-latest
     environment: production   # Enables required reviewers / env protection rules
+
+    env:
+      # Must match TapliveAmplifyHosting appName in lib/taplive-web-aws-cdk-stack.ts
+      TAPLIVE_AMPLIFY_APP_NAME: TapliveWeb
 
     steps:
       - name: Checkout
@@ -48,12 +57,37 @@ jobs:
 
       - name: CDK Deploy
         run: |
+          set -euo pipefail
+
+          # If TapliveWeb already exists in Amplify, skip creating AWS::Amplify::* in CDK (avoids a
+          # second app when quota is 1 / drift). Otherwise wire GitHub on first-time Amplify create.
+          CDK_CONTEXT=""
+          # workflow_dispatch only; empty on push → never force
+          FORCE_AMPLIFY='${{ github.event.inputs.force_amplify_cdk }}'
+          if [ "$FORCE_AMPLIFY" = "true" ]; then
+            echo "force_amplify_cdk: using amplifyConnectGitHub=true"
+            CDK_CONTEXT="-c amplifyConnectGitHub=true"
+          else
+            EXISTING_APP="$(aws amplify list-apps --region "$AWS_REGION" \
+              --query "apps[?name=='${TAPLIVE_AMPLIFY_APP_NAME}'].appId | [0]" --output text 2>/dev/null || true)"
+            if [ -n "$EXISTING_APP" ] && [ "$EXISTING_APP" != "None" ]; then
+              echo "Amplify app '${TAPLIVE_AMPLIFY_APP_NAME}' already exists (appId=$EXISTING_APP); using skipAmplifyHosting=true"
+              CDK_CONTEXT="-c skipAmplifyHosting=true"
+            else
+              echo "No existing Amplify app named '${TAPLIVE_AMPLIFY_APP_NAME}'; using amplifyConnectGitHub=true"
+              CDK_CONTEXT="-c amplifyConnectGitHub=true"
+            fi
+          fi
+
           STACK="${{ github.event.inputs.stack }}"
           if [ -n "$STACK" ]; then
-            npx cdk deploy "$STACK" --require-approval never
+            # shellcheck disable=SC2086
+            npx cdk deploy "$STACK" --require-approval never $CDK_CONTEXT
           else
-            npx cdk deploy --all --require-approval never
+            # shellcheck disable=SC2086
+            npx cdk deploy --all --require-approval never $CDK_CONTEXT
           fi
         env:
           # Pass any app-level env vars your CDK app reads at synth time
           NODE_ENV: production
+          AWS_REGION: ${{ secrets.AWS_REGION }}
