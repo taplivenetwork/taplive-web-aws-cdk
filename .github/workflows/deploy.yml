@@ -1,8 +1,8 @@
-# Intended way to deploy this stack: push to `main` or run this workflow manually.
-# CDK context (`amplifyConnectGitHub`, `skipAmplifyHosting`) is set here only—do not rely on
-# ad hoc local `cdk deploy` for production. First Amplify create uses `-c amplifyConnectGitHub=true`
-# (requires `AMPLIFY_GITHUB_PAT_JSON_KEY` in `{stack}/backend/app-secrets`). If an Amplify app
-# named TapliveWeb already exists, hosting is skipped in CDK to avoid duplicate apps / quota issues.
+# CDK context for Amplify (see CDK Deploy step):
+# - amplifyConnectGitHub=true → TapliveAmplifyHosting gets repository + PAT (lib/taplive-web-aws-cdk-stack.ts).
+# - skipAmplifyHosting=true → Amplify is omitted from the template (no Git wiring from CDK that run).
+# If CloudFormation already has AWS::Amplify::App, we MUST NOT skip—otherwise Git never updates from CDK.
+# skip is only used when an app exists in Amplify but is NOT in the stack (orphan / quota protection).
 name: CD – CDK Deploy
 
 on:
@@ -38,6 +38,8 @@ jobs:
     env:
       # Must match TapliveAmplifyHosting appName in lib/taplive-web-aws-cdk-stack.ts
       TAPLIVE_AMPLIFY_APP_NAME: TapliveWeb
+      # Must match bin/taplive-web-aws-cdk.ts stack id
+      CDK_STACK_NAME: TapliveWebAwsCdkStack
 
     steps:
       - name: Checkout
@@ -68,22 +70,35 @@ jobs:
         run: |
           set -euo pipefail
 
-          # If TapliveWeb already exists in Amplify, skip creating AWS::Amplify::* in CDK (avoids a
-          # second app when quota is 1 / drift). Otherwise wire GitHub on first-time Amplify create.
+          # TapliveAmplifyHosting only sets repository + accessToken when amplifyConnectGitHub=true
+          # (see lib/taplive-web-aws-cdk-stack.ts). skipAmplifyHosting omits Amplify entirely—so Git
+          # is never wired from CDK on that deploy.
           CDK_CONTEXT=""
-          # workflow_dispatch only; empty on push → never force
           FORCE_AMPLIFY='${{ github.event.inputs.force_amplify_cdk }}'
           if [ "$FORCE_AMPLIFY" = "true" ]; then
             echo "force_amplify_cdk: using amplifyConnectGitHub=true"
             CDK_CONTEXT="-c amplifyConnectGitHub=true"
           else
+            CF_AMPLIFY_PHYSICAL="$(
+              aws cloudformation describe-stack-resources \
+                --stack-name "$CDK_STACK_NAME" \
+                --region "$AWS_REGION" \
+                --query "StackResources[?ResourceType=='AWS::Amplify::App'].PhysicalResourceId | [0]" \
+                --output text 2>/dev/null || true
+            )"
             EXISTING_APP="$(aws amplify list-apps --region "$AWS_REGION" \
               --query "apps[?name=='${TAPLIVE_AMPLIFY_APP_NAME}'].appId | [0]" --output text 2>/dev/null || true)"
-            if [ -n "$EXISTING_APP" ] && [ "$EXISTING_APP" != "None" ]; then
-              echo "Amplify app '${TAPLIVE_AMPLIFY_APP_NAME}' already exists (appId=$EXISTING_APP); using skipAmplifyHosting=true"
+
+            if [ -n "$CF_AMPLIFY_PHYSICAL" ] && [ "$CF_AMPLIFY_PHYSICAL" != "None" ]; then
+              # Stack already manages Amplify — deploy hosting + wire Git so CF can UpdateApp (repo + PAT).
+              echo "Stack has AWS::Amplify::App (physicalId=$CF_AMPLIFY_PHYSICAL); using amplifyConnectGitHub=true (no skip)"
+              CDK_CONTEXT="-c amplifyConnectGitHub=true"
+            elif [ -n "$EXISTING_APP" ] && [ "$EXISTING_APP" != "None" ]; then
+              # Orphan app in Amplify but not in stack — do not CREATE a second app (quota / duplicate).
+              echo "Amplify app '${TAPLIVE_AMPLIFY_APP_NAME}' exists (appId=$EXISTING_APP) but not in stack; using skipAmplifyHosting=true"
               CDK_CONTEXT="-c skipAmplifyHosting=true"
             else
-              echo "No existing Amplify app named '${TAPLIVE_AMPLIFY_APP_NAME}'; using amplifyConnectGitHub=true"
+              echo "No Amplify app; first-time hosting with amplifyConnectGitHub=true"
               CDK_CONTEXT="-c amplifyConnectGitHub=true"
             fi
           fi
