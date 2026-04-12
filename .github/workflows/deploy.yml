@@ -1,3 +1,8 @@
+# Intended way to deploy this stack: push to `main` or run this workflow manually.
+# CDK context (`amplifyConnectGitHub`, `skipAmplifyHosting`) is set here only—do not rely on
+# ad hoc local `cdk deploy` for production. First Amplify create uses `-c amplifyConnectGitHub=true`
+# (requires `AMPLIFY_GITHUB_PAT_JSON_KEY` in `{stack}/backend/app-secrets`). If an Amplify app
+# named TapliveWeb already exists, hosting is skipped in CDK to avoid duplicate apps / quota issues.
 name: CD – CDK Deploy
 
 on:
@@ -19,6 +24,10 @@ on:
 permissions:
   id-token: write   # Required for OIDC
   contents: read
+
+concurrency:
+  group: cdk-deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   cdk-deploy:
