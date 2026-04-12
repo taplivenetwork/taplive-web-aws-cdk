@@ -57,6 +57,19 @@ describe('TapliveAmplifyHosting', () => {
         { BranchName: 'main', Prefix: 'www' },
       ],
     });
+
+    template.hasResource('AWS::Amplify::App', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
+    template.hasResource('AWS::Amplify::Branch', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
+    template.hasResource('AWS::Amplify::Domain', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
   });
 
   test('embeds build spec with npm ci, next build, and .next cache path', () => {
@@ -92,6 +105,15 @@ describe('TapliveAmplifyHosting', () => {
     const { template } = makeHosting({ enableCustomDomainAssociation: false });
 
     template.resourceCountIs('AWS::Amplify::Domain', 0);
+
+    template.hasResource('AWS::Amplify::App', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
+    template.hasResource('AWS::Amplify::Branch', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
   });
 
   test('throws when repositoryUrl is set without githubAccessTokenSecret', () => {
