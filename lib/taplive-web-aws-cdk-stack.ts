@@ -5,18 +5,11 @@ import { SesDomainIdentity } from './ses-domain-identity';
 import { SesEmailSender } from './ses-email-sender';
 import { BackendApiFoundation } from './backend-api-foundation';
 import { CognitoUserAuth } from './cognito-user-auth';
-import { TapliveAmplifyHosting } from './taplive-amplify-hosting';
-
-/** Default frontend repo; production branch is `main` (see TapliveAmplifyHosting). */
-const DEFAULT_TAPLIVE_WEB_REPOSITORY_URL = 'https://github.com/taplivenetwork/taplive-web-new.git';
-
-/** JSON field in `{stackName}/backend/app-secrets` for the GitHub PAT (Amplify repo access). */
-const AMPLIFY_GITHUB_PAT_JSON_KEY = 'AMPLIFY_GITHUB_PAT_JSON_KEY';
 
 export class TapliveWebAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-    
+
     // ── Route 53 hosted zone ─────────────────────────────────────────────────
     // After first deploy, copy the 4 NS values from stack outputs and paste
     // them as name servers in your domain registrar. One-time step.
@@ -57,8 +50,7 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
     });
 
     // ── Cognito user auth ─────────────────────────────────────────────────────
-    // Sign-up flow: SignUp -> email code sent by Cognito -> ConfirmSignUp.
-    const cognitoAuth = new CognitoUserAuth(this, 'TapliveCognitoAuth', {
+    new CognitoUserAuth(this, 'TapliveCognitoAuth', {
       userPoolName: 'TapliveUsers',
       userPoolClientName: 'TapliveWebClient',
       verificationEmailSubject: 'Your TapLive verification code',
@@ -66,51 +58,11 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
     });
 
     // ── Backend API foundation ───────────────────────────────────────────────
-    const backend = new BackendApiFoundation(this, 'TapliveBackendApiFoundation', {
+    new BackendApiFoundation(this, 'TapliveBackendApiFoundation', {
       apiName: 'TapliveBackendApi',
       corsAllowedOrigins: ['*'],
     });
 
-    // ── Amplify Hosting (frontend) ───────────────────────────────────────────
-    // Default repo: taplivenetwork/taplive-web-new (branch main). GitHub is wired when:
-    //   -c amplifyConnectGitHub=true  → PAT from backend app-secrets JSON field `AMPLIFY_GITHUB_PAT_JSON_KEY`
-    // Optional: -c amplifyRepositoryUrl=https://github.com/other/repo.git
-    const amplifyRepoOverride = this.node.tryGetContext('amplifyRepositoryUrl') as string | undefined;
-    const connectAmplifyGitHubRaw = this.node.tryGetContext('amplifyConnectGitHub');
-    const connectAmplifyGitHub =
-      connectAmplifyGitHubRaw === true || connectAmplifyGitHubRaw === 'true';
-
-    const amplifyGithubToken = connectAmplifyGitHub ? backend.appSecrets : undefined;
-
-    const amplifyRepositoryUrl =
-      amplifyGithubToken !== undefined
-        ? (amplifyRepoOverride?.trim() || DEFAULT_TAPLIVE_WEB_REPOSITORY_URL)
-        : undefined;
-
-    const amplifyCustomDomainRaw = this.node.tryGetContext('amplifyEnableCustomDomain');
-    const amplifyEnableCustomDomain =
-      amplifyCustomDomainRaw !== false && amplifyCustomDomainRaw !== 'false';
-
-    // Set `-c skipAmplifyHosting=true` once to drop Amplify from the stack after drift (e.g. app
-    // deleted in the console). Requires Amplify L1 resources to use RemovalPolicy RETAIN so CFN
-    // does not call DeleteApp when removing them from the template. Then deploy again without this flag.
-    const skipAmplifyHostingRaw = this.node.tryGetContext('skipAmplifyHosting');
-    const skipAmplifyHosting =
-      skipAmplifyHostingRaw === true || skipAmplifyHostingRaw === 'true';
-
-    if (!skipAmplifyHosting) {
-      new TapliveAmplifyHosting(this, 'TapliveAmplifyHosting', {
-        appName: 'TapliveWeb',
-        domainName: 'taplive.tv',
-        productionBranchName: 'main',
-        userPool: cognitoAuth.userPool,
-        userPoolClient: cognitoAuth.userPoolClient,
-        backendApiUrl: backend.restApi.url,
-        repositoryUrl: amplifyRepositoryUrl,
-        githubAccessTokenSecret: amplifyGithubToken,
-        githubAccessTokenSecretJsonField: connectAmplifyGitHub ? AMPLIFY_GITHUB_PAT_JSON_KEY : undefined,
-        enableCustomDomainAssociation: amplifyEnableCustomDomain,
-      });
-    }
+    // Amplify Hosting: create and connect the frontend app in the AWS Amplify console (not CDK).
   }
 }
