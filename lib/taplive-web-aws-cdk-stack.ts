@@ -91,17 +91,26 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
     const amplifyEnableCustomDomain =
       amplifyCustomDomainRaw !== false && amplifyCustomDomainRaw !== 'false';
 
-    new TapliveAmplifyHosting(this, 'TapliveAmplifyHosting', {
-      appName: 'TapliveWeb',
-      domainName: 'taplive.tv',
-      productionBranchName: 'main',
-      userPool: cognitoAuth.userPool,
-      userPoolClient: cognitoAuth.userPoolClient,
-      backendApiUrl: backend.restApi.url,
-      repositoryUrl: amplifyRepositoryUrl,
-      githubAccessTokenSecret: amplifyGithubToken,
-      githubAccessTokenSecretJsonField: connectAmplifyGitHub ? AMPLIFY_GITHUB_PAT_JSON_KEY : undefined,
-      enableCustomDomainAssociation: amplifyEnableCustomDomain,
-    });
+    // Set `-c skipAmplifyHosting=true` once to drop Amplify from the stack after drift (e.g. app
+    // deleted in the console). Requires Amplify L1 resources to use RemovalPolicy RETAIN so CFN
+    // does not call DeleteApp when removing them from the template. Then deploy again without this flag.
+    const skipAmplifyHostingRaw = this.node.tryGetContext('skipAmplifyHosting');
+    const skipAmplifyHosting =
+      skipAmplifyHostingRaw === true || skipAmplifyHostingRaw === 'true';
+
+    if (!skipAmplifyHosting) {
+      new TapliveAmplifyHosting(this, 'TapliveAmplifyHosting', {
+        appName: 'TapliveWeb',
+        domainName: 'taplive.tv',
+        productionBranchName: 'main',
+        userPool: cognitoAuth.userPool,
+        userPoolClient: cognitoAuth.userPoolClient,
+        backendApiUrl: backend.restApi.url,
+        repositoryUrl: amplifyRepositoryUrl,
+        githubAccessTokenSecret: amplifyGithubToken,
+        githubAccessTokenSecretJsonField: connectAmplifyGitHub ? AMPLIFY_GITHUB_PAT_JSON_KEY : undefined,
+        enableCustomDomainAssociation: amplifyEnableCustomDomain,
+      });
+    }
   }
 }

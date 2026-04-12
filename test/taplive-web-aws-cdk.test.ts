@@ -11,6 +11,28 @@ describe('TapliveWebAwsCdkStack', () => {
     template = Template.fromStack(stack);
   });
 
+  describe('skipAmplifyHosting', () => {
+    test('omits Amplify resources and hosting outputs when context is true', () => {
+      const app = new cdk.App({ context: { skipAmplifyHosting: true } });
+      const stack = new TapliveWebAwsCdkStack(app, 'SkipAmplifyStack');
+      const t = Template.fromStack(stack);
+
+      t.resourceCountIs('AWS::Amplify::App', 0);
+      t.resourceCountIs('AWS::Amplify::Branch', 0);
+      t.resourceCountIs('AWS::Amplify::Domain', 0);
+      expect(Object.keys(t.findOutputs('*', { Description: 'Amplify app ID (hosting)' })).length).toBe(
+        0,
+      );
+    });
+
+    test('accepts skipAmplifyHosting string true', () => {
+      const app = new cdk.App({ context: { skipAmplifyHosting: 'true' } });
+      const stack = new TapliveWebAwsCdkStack(app, 'SkipAmplifyStringStack');
+      const t = Template.fromStack(stack);
+      t.resourceCountIs('AWS::Amplify::App', 0);
+    });
+  });
+
   describe('integration wiring', () => {
     test('creates one of each major feature resource', () => {
       template.resourceCountIs('AWS::Route53::HostedZone', 1);

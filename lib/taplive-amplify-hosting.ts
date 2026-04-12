@@ -85,6 +85,9 @@ export class TapliveAmplifyHosting extends Construct {
     };
 
     this.app = new amplify.CfnApp(this, 'AmplifyApp', appProps);
+    // Retain so if the app is removed from the stack template, CFN does not call DeleteApp
+    // (needed after out-of-band console deletes, when DeleteApp would fail with NotFound).
+    this.app.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
 
     const branchEnv: amplify.CfnBranch.EnvironmentVariableProperty[] = [
       { name: 'TAPLIVE_PUBLIC_AWS_REGION', value: region },
@@ -102,6 +105,7 @@ export class TapliveAmplifyHosting extends Construct {
       framework: 'Next.js - SSR',
       environmentVariables: branchEnv,
     });
+    this.branch.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
 
     if (enableDomain) {
       // Omit CertificateSettings: explicit AMPLIFY_MANAGED has caused API 400s ("custom certificate"
@@ -115,6 +119,7 @@ export class TapliveAmplifyHosting extends Construct {
         ],
       });
       this.domain.node.addDependency(this.branch);
+      this.domain.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
     }
 
     const stackName = stack.stackName;
