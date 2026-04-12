@@ -1,8 +1,3 @@
-# CDK context for Amplify (see CDK Deploy step):
-# - amplifyConnectGitHub=true → TapliveAmplifyHosting gets repository + PAT (lib/taplive-web-aws-cdk-stack.ts).
-# - skipAmplifyHosting=true → Amplify is omitted from the template (no Git wiring from CDK that run).
-# If CloudFormation already has AWS::Amplify::App, we MUST NOT skip—otherwise Git never updates from CDK.
-# skip is only used when an app exists in Amplify but is NOT in the stack (orphan / quota protection).
 name: CD – CDK Deploy
 
 on:
@@ -12,17 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       stack:
-        description: "taplive-web-stack"
+        description: "Optional stack id (empty = deploy all)"
         required: false
         default: ""
-      force_amplify_cdk:
-        description: "Ignore hosted-app detection; always pass amplifyConnectGitHub (e.g. recreate Amplify via CDK)"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
-  id-token: write   # Required for OIDC
+  id-token: write
   contents: read
 
 concurrency:
@@ -33,13 +23,7 @@ jobs:
   cdk-deploy:
     name: CDK Deploy
     runs-on: ubuntu-latest
-    environment: production   # Enables required reviewers / env protection rules
-
-    env:
-      # Must match TapliveAmplifyHosting appName in lib/taplive-web-aws-cdk-stack.ts
-      TAPLIVE_AMPLIFY_APP_NAME: TapliveWeb
-      # Must match bin/taplive-web-aws-cdk.ts stack id
-      CDK_STACK_NAME: TapliveWebAwsCdkStack
+    environment: production
 
     steps:
       - name: Checkout
@@ -68,50 +52,11 @@ jobs:
 
       - name: CDK Deploy
         run: |
-          set -euo pipefail
-
-          # TapliveAmplifyHosting only sets repository + accessToken when amplifyConnectGitHub=true
-          # (see lib/taplive-web-aws-cdk-stack.ts). skipAmplifyHosting omits Amplify entirely—so Git
-          # is never wired from CDK on that deploy.
-          CDK_CONTEXT=""
-          FORCE_AMPLIFY='${{ github.event.inputs.force_amplify_cdk }}'
-          if [ "$FORCE_AMPLIFY" = "true" ]; then
-            echo "force_amplify_cdk: using amplifyConnectGitHub=true"
-            CDK_CONTEXT="-c amplifyConnectGitHub=true"
-          else
-            CF_AMPLIFY_PHYSICAL="$(
-              aws cloudformation describe-stack-resources \
-                --stack-name "$CDK_STACK_NAME" \
-                --region "$AWS_REGION" \
-                --query "StackResources[?ResourceType=='AWS::Amplify::App'].PhysicalResourceId | [0]" \
-                --output text 2>/dev/null || true
-            )"
-            EXISTING_APP="$(aws amplify list-apps --region "$AWS_REGION" \
-              --query "apps[?name=='${TAPLIVE_AMPLIFY_APP_NAME}'].appId | [0]" --output text 2>/dev/null || true)"
-
-            if [ -n "$CF_AMPLIFY_PHYSICAL" ] && [ "$CF_AMPLIFY_PHYSICAL" != "None" ]; then
-              # Stack already manages Amplify — deploy hosting + wire Git so CF can UpdateApp (repo + PAT).
-              echo "Stack has AWS::Amplify::App (physicalId=$CF_AMPLIFY_PHYSICAL); using amplifyConnectGitHub=true (no skip)"
-              CDK_CONTEXT="-c amplifyConnectGitHub=true"
-            elif [ -n "$EXISTING_APP" ] && [ "$EXISTING_APP" != "None" ]; then
-              # Orphan app in Amplify but not in stack — do not CREATE a second app (quota / duplicate).
-              echo "Amplify app '${TAPLIVE_AMPLIFY_APP_NAME}' exists (appId=$EXISTING_APP) but not in stack; using skipAmplifyHosting=true"
-              CDK_CONTEXT="-c skipAmplifyHosting=true"
-            else
-              echo "No Amplify app; first-time hosting with amplifyConnectGitHub=true"
-              CDK_CONTEXT="-c amplifyConnectGitHub=true"
-            fi
-          fi
-
           STACK="${{ github.event.inputs.stack }}"
           if [ -n "$STACK" ]; then
-            # shellcheck disable=SC2086
-            npx cdk deploy "$STACK" --require-approval never $CDK_CONTEXT
+            npx cdk deploy "$STACK" --require-approval never
           else
-            # shellcheck disable=SC2086
-            npx cdk deploy --all --require-approval never $CDK_CONTEXT
+            npx cdk deploy --all --require-approval never
           fi
         env:
-          # Pass any app-level env vars your CDK app reads at synth time
           NODE_ENV: production
-          AWS_REGION: ${{ secrets.AWS_REGION }}

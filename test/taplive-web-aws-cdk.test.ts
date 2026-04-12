@@ -11,28 +11,6 @@ describe('TapliveWebAwsCdkStack', () => {
     template = Template.fromStack(stack);
   });
 
-  describe('skipAmplifyHosting', () => {
-    test('omits Amplify resources and hosting outputs when context is true', () => {
-      const app = new cdk.App({ context: { skipAmplifyHosting: true } });
-      const stack = new TapliveWebAwsCdkStack(app, 'SkipAmplifyStack');
-      const t = Template.fromStack(stack);
-
-      t.resourceCountIs('AWS::Amplify::App', 0);
-      t.resourceCountIs('AWS::Amplify::Branch', 0);
-      t.resourceCountIs('AWS::Amplify::Domain', 0);
-      expect(Object.keys(t.findOutputs('*', { Description: 'Amplify app ID (hosting)' })).length).toBe(
-        0,
-      );
-    });
-
-    test('accepts skipAmplifyHosting string true', () => {
-      const app = new cdk.App({ context: { skipAmplifyHosting: 'true' } });
-      const stack = new TapliveWebAwsCdkStack(app, 'SkipAmplifyStringStack');
-      const t = Template.fromStack(stack);
-      t.resourceCountIs('AWS::Amplify::App', 0);
-    });
-  });
-
   describe('integration wiring', () => {
     test('creates one of each major feature resource', () => {
       template.resourceCountIs('AWS::Route53::HostedZone', 1);
@@ -44,9 +22,9 @@ describe('TapliveWebAwsCdkStack', () => {
       template.resourceCountIs('AWS::Lambda::Function', 1);
       template.resourceCountIs('AWS::SecretsManager::Secret', 2);
       template.resourceCountIs('AWS::RDS::DBInstance', 1);
-      template.resourceCountIs('AWS::Amplify::App', 1);
-      template.resourceCountIs('AWS::Amplify::Branch', 1);
-      template.resourceCountIs('AWS::Amplify::Domain', 1);
+      template.resourceCountIs('AWS::Amplify::App', 0);
+      template.resourceCountIs('AWS::Amplify::Branch', 0);
+      template.resourceCountIs('AWS::Amplify::Domain', 0);
     });
 
     test('emits foundational outputs required by consumers', () => {
@@ -64,7 +42,7 @@ describe('TapliveWebAwsCdkStack', () => {
       })).length).toBe(1);
       expect(Object.keys(template.findOutputs('*', {
         Description: 'Amplify app ID (hosting)',
-      })).length).toBe(1);
+      })).length).toBe(0);
     });
 
     test('keeps intentionally excluded resources absent', () => {
