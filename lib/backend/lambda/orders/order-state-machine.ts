@@ -1,10 +1,4 @@
-export type OrderStatus =
-  | "pending"
-  | "accepted"
-  | "active"
-  | "completed"
-  | "cancelled"
-  | "disputed";
+import { OrderStatus } from "./order.types";
 
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["accepted", "cancelled"],
