@@ -16,6 +16,12 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   disputed: [],
 };
 
+/**
+ * Determines if transitioning from current to next state is valid based on `ORDER_TRANSITIONS`.
+ * @param current Current state of the order.
+ * @param next State to be transitioned to.
+ * @returns `true` if the transition is valid, `false` otherwise.
+ */
 export function isValidTransition(
   current: OrderStatus,
   next: OrderStatus,
@@ -23,6 +29,16 @@ export function isValidTransition(
   return ORDER_TRANSITIONS[current].includes(next);
 }
 
+/**
+ * Enforces valid order state transitions.
+ *
+ * Terminal states (`completed`, `cancelled`, `disputed`) do not allow
+ * further transitions.
+ *
+ * @param current Current state of the order.
+ * @param next State to be transitioned to.
+ * @throws Error if the transition is invalid.
+ */
 export function validateStateTransition(
   current: OrderStatus,
   next: OrderStatus,
