@@ -5,6 +5,7 @@ import { SesDomainIdentity } from './ses-domain-identity';
 import { SesEmailSender } from './ses-email-sender';
 import { BackendApiFoundation } from './backend-api-foundation';
 import { CognitoUserAuth } from './cognito-user-auth';
+import { AmplifyHosting } from './amplify-hosting';
 
 export class TapliveWebAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -63,6 +64,13 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
       corsAllowedOrigins: ['*'],
     });
 
-    // Amplify Hosting: create and connect the frontend app in the AWS Amplify console (not CDK).
+    // ── Amplify hosting (frontend) ─────────────────────────────────────────────
+    new AmplifyHosting(this, 'TapliveWebNewAmplifyHosting', {
+      appName: 'taplive-web-new',
+      repositoryUrl: 'https://github.com/taplivenetwork/taplive-web-new',
+      branchName: 'main',
+      githubTokenSecretName:
+        this.node.tryGetContext('amplifyGithubTokenSecretName') ?? 'taplive/github/pat',
+    });
   }
 }
