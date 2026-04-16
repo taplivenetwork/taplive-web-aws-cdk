@@ -49,18 +49,20 @@ export class TapliveWebAwsCdkStack extends cdk.Stack {
       },
     });
 
+    // This must be placed before CognitoUserAuth so the Lambda can be passed as a prop
+    // ── Backend API foundation ───────────────────────────────────────────────
+    const backend = new BackendApiFoundation(this, 'TapliveBackendApiFoundation', {
+      apiName: 'TapliveBackendApi',
+      corsAllowedOrigins: ['*'],
+    });
+
     // ── Cognito user auth ─────────────────────────────────────────────────────
     new CognitoUserAuth(this, 'TapliveCognitoAuth', {
       userPoolName: 'TapliveUsers',
       userPoolClientName: 'TapliveWebClient',
       verificationEmailSubject: 'Your TapLive verification code',
       verificationEmailBody: 'Use this code to verify your TapLive account: {####}',
-    });
-
-    // ── Backend API foundation ───────────────────────────────────────────────
-    new BackendApiFoundation(this, 'TapliveBackendApiFoundation', {
-      apiName: 'TapliveBackendApi',
-      corsAllowedOrigins: ['*'],
+      postConfirmationFunction: backend.postConfirmationFunction,
     });
 
     // Amplify Hosting: create and connect the frontend app in the AWS Amplify console (not CDK).

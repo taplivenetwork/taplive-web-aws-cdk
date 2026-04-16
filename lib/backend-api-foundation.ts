@@ -11,6 +11,7 @@ import { BackendDatabase } from './backend/backend-database';
 import { BackendHealthCheck } from './backend/backend-health-check';
 import { BackendRestApi } from './backend/backend-rest-api';
 import { BackendSecrets } from './backend/backend-secrets';
+import { CognitoPostConfirmation } from './backend/cognito-post-confirmation';
 
 export { BackendApiFoundationProps };
 
@@ -22,6 +23,7 @@ export class BackendApiFoundation extends Construct {
   public readonly baseLambdaRole: iam.Role;
   public readonly appSecrets: secretsmanager.Secret;
   public readonly healthFunction: lambda.Function;
+  public readonly postConfirmationFunction: lambda.Function;
   public readonly database: rds.DatabaseInstance;
   public readonly databaseCredentialsSecret: secretsmanager.ISecret;
 
@@ -47,6 +49,15 @@ export class BackendApiFoundation extends Construct {
       appSecrets: this.appSecrets,
     });
     this.healthFunction = health.healthFunction;
+
+    const postConfirmation = new CognitoPostConfirmation(this, 'CognitoPostConfirmation', {
+      // database: this.database,
+      databaseCredentialsSecret: this.databaseCredentialsSecret,
+      vpc: database.vpc,
+      securityGroup: database.securityGroup,
+      stackName,
+    });
+    this.postConfirmationFunction = postConfirmation.function;
 
     const restApi = new BackendRestApi(this, 'Api', {
       apiName: props.apiName ?? 'TapliveBackendApi',
