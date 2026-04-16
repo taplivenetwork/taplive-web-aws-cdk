@@ -22,8 +22,8 @@ describe('TapliveWebAwsCdkStack', () => {
       template.resourceCountIs('AWS::Lambda::Function', 1);
       template.resourceCountIs('AWS::SecretsManager::Secret', 2);
       template.resourceCountIs('AWS::RDS::DBInstance', 1);
-      template.resourceCountIs('AWS::Amplify::App', 0);
-      template.resourceCountIs('AWS::Amplify::Branch', 0);
+      template.resourceCountIs('AWS::Amplify::App', 1);
+      template.resourceCountIs('AWS::Amplify::Branch', 1);
       template.resourceCountIs('AWS::Amplify::Domain', 0);
     });
 
@@ -42,7 +42,7 @@ describe('TapliveWebAwsCdkStack', () => {
       })).length).toBe(1);
       expect(Object.keys(template.findOutputs('*', {
         Description: 'Amplify app ID (hosting)',
-      })).length).toBe(0);
+      })).length).toBe(1);
     });
 
     test('keeps intentionally excluded resources absent', () => {
