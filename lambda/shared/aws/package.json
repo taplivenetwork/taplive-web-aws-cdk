@@ -1,0 +1,14 @@
+{
+  "name": "@shared/aws",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "aws-sdk": "2.1693.0"
+  }
+}
