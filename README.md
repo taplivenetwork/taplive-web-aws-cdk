@@ -33,3 +33,15 @@ This stack now includes a reusable backend foundation construct that provisions:
 - Use lowercase noun resources (example: `/health`, `/users`, `/sessions`)
 - Use HTTP methods for action semantics (`GET`, `POST`, `PATCH`, `DELETE`)
 - Keep endpoints resource-oriented and avoid verb-style paths
+
+## Amplify hosting (frontend)
+
+This stack provisions an Amplify app connected to:
+
+- Repo: `https://github.com/taplivenetwork/taplive-web-new`
+- Branch: `main` (auto-build enabled)
+
+Before deploying, create a Secrets Manager secret containing a GitHub PAT with repo access:
+
+- Default secret name expected by CDK: `taplive/github/pat`
+- Optional override at deploy time: `-c amplifyGithubTokenSecretName=<your-secret-name>`
