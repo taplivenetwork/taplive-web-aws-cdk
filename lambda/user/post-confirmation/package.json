@@ -1,0 +1,14 @@
+{
+  "name": "post-confirmation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@shared/db": "file:../../shared/db",
+    "@shared/aws": "file:../../shared/aws"
+  }
+}
