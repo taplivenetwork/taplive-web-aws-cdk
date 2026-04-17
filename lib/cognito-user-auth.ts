@@ -54,6 +54,13 @@ export class CognitoUserAuth extends Construct {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    /**
+     * If the postConfirmation function is provided, invoke it when a user confirms sign up.
+     */
+    if (props.postConfirmationFunction) {
+      this.userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, props.postConfirmationFunction);
+    }
+
     this.userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
       userPool: this.userPool,
       userPoolClientName: props.userPoolClientName ?? 'TapliveWebClient',

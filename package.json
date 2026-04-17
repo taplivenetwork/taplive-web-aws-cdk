@@ -24,5 +24,11 @@
   "dependencies": {
     "aws-cdk-lib": "^2.246.0",
     "constructs": "^10.5.0"
-  }
+  },
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "lambda/shared/*",
+    "lambda/user/*"
+  ]
 }

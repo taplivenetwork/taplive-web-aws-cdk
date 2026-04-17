@@ -1,3 +1,4 @@
+import * as lambda from "aws-cdk-lib/aws-lambda";
 export interface CognitoUserAuthProps {
   /**
    * User pool name shown in Cognito.
@@ -29,4 +30,9 @@ export interface CognitoUserAuthProps {
    * Must include the Cognito placeholder {####}.
    */
   readonly verificationEmailBody?: string;
+
+  /**
+   * PostConfirmation lambda function for creating user profiles after confirmed sign up.
+   */
+  readonly postConfirmationFunction?: lambda.Function;
 }
