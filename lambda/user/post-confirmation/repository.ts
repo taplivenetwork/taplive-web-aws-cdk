@@ -8,6 +8,18 @@ export interface DbCredentials {
   password: string;
 }
 
+/**
+ * Create a user profile in the `users` table after Cognito signup.
+ * 
+ * - Ignores insertion if the user profile already exists
+ * 
+ * @param credentials Database connection credentials
+ * @param cognitoId Unique Cognito user ID (sub)
+ * @param email User email address
+ * @param name Display name for the user
+ * @returns Created user profile or null if it already exists
+ * @throws Error if the database query fails
+ */
 export async function createUserProfile(
   credentials: DbCredentials,
   cognitoId: string,
