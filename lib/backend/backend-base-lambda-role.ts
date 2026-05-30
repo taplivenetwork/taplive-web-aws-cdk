@@ -13,6 +13,7 @@ export class BackendBaseLambdaRole extends Construct {
       description: 'Shared Lambda execution role with logs + RDS + Secrets Manager access',
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
       ],
     });
 

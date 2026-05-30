@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib/core';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
@@ -8,6 +9,8 @@ export interface BackendHealthCheckProps {
   readonly stackName: string;
   readonly role: iam.IRole;
   readonly appSecrets: secretsmanager.ISecret;
+  readonly vpc: ec2.IVpc;
+  readonly securityGroups: ec2.ISecurityGroup[];
 }
 
 export class BackendHealthCheck extends Construct {
@@ -46,6 +49,10 @@ export class BackendHealthCheck extends Construct {
       `),
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
+      vpc: props.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      allowPublicSubnet: true,
+      securityGroups: props.securityGroups,
       environment: {
         APP_SECRETS_ARN: props.appSecrets.secretArn,
       },

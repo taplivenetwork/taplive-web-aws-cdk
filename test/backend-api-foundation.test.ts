@@ -50,6 +50,10 @@ describe('BackendApiFoundation', () => {
       template.hasResourceProperties('AWS::Lambda::Function', {
         Handler: 'index.handler',
         Runtime: 'nodejs20.x',
+        VpcConfig: Match.objectLike({
+          SecurityGroupIds: Match.anyValue(),
+          SubnetIds: Match.anyValue(),
+        }),
       });
     });
 
@@ -66,12 +70,12 @@ describe('BackendApiFoundation', () => {
       });
     });
 
-    test('attaches Lambda basic execution managed policy for CloudWatch logs', () => {
+    test('attaches Lambda basic execution and VPC access managed policies', () => {
       const { template } = makeBackend();
       const roles = template.findResources('AWS::IAM::Role');
-      const hasLambdaBasicManagedPolicy = Object.values(roles).some((role: any) =>
-        JSON.stringify(role).includes('AWSLambdaBasicExecutionRole'));
-      expect(hasLambdaBasicManagedPolicy).toBe(true);
+      const roleJson = JSON.stringify(roles);
+      expect(roleJson).toContain('AWSLambdaBasicExecutionRole');
+      expect(roleJson).toContain('AWSLambdaVPCAccessExecutionRole');
     });
 
     test('adds inline permissions for RDS and Secrets Manager read', () => {
@@ -110,6 +114,16 @@ describe('BackendApiFoundation', () => {
         Engine: 'postgres',
         DBName: 'taplive',
         PubliclyAccessible: false,
+      });
+    });
+
+    test('allows Lambda security group ingress to PostgreSQL on port 5432', () => {
+      const { template } = makeBackend();
+      template.hasResourceProperties('AWS::EC2::SecurityGroupIngress', {
+        IpProtocol: 'tcp',
+        FromPort: 5432,
+        ToPort: 5432,
+        Description: 'Allow Lambda functions to access PostgreSQL',
       });
     });
 

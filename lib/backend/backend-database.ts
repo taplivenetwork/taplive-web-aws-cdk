@@ -11,6 +11,7 @@ export interface BackendDatabaseProps {
 export class BackendDatabase extends Construct {
   public readonly vpc: ec2.Vpc;
   public readonly securityGroup: ec2.SecurityGroup;
+  public readonly lambdaSecurityGroup: ec2.SecurityGroup;
   public readonly database: rds.DatabaseInstance;
   public readonly databaseCredentialsSecret: secretsmanager.ISecret;
 
@@ -37,6 +38,18 @@ export class BackendDatabase extends Construct {
       description: 'Security group for backend PostgreSQL database',
       allowAllOutbound: false,
     });
+
+    this.lambdaSecurityGroup = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
+      vpc: this.vpc,
+      description: 'Security group for backend Lambda functions',
+      allowAllOutbound: true,
+    });
+
+    this.securityGroup.addIngressRule(
+      this.lambdaSecurityGroup,
+      ec2.Port.tcp(5432),
+      'Allow Lambda functions to access PostgreSQL',
+    );
 
     this.database = new rds.DatabaseInstance(this, 'BackendPostgresDatabase', {
       engine: rds.DatabaseInstanceEngine.postgres({
