@@ -45,6 +45,8 @@ export class BackendApiFoundation extends Construct {
       stackName,
       role: this.baseLambdaRole,
       appSecrets: this.appSecrets,
+      vpc: database.vpc,
+      securityGroups: [database.lambdaSecurityGroup],
     });
     this.healthFunction = health.healthFunction;
 
