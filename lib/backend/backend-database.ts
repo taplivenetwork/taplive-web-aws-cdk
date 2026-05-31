@@ -6,61 +6,27 @@ import { Construct } from 'constructs';
 
 export interface BackendDatabaseProps {
   readonly stackName: string;
+  readonly vpc: ec2.IVpc;
+  readonly databaseSecurityGroup: ec2.ISecurityGroup;
 }
 
 export class BackendDatabase extends Construct {
-  public readonly vpc: ec2.Vpc;
-  public readonly securityGroup: ec2.SecurityGroup;
-  public readonly lambdaSecurityGroup: ec2.SecurityGroup;
   public readonly database: rds.DatabaseInstance;
   public readonly databaseCredentialsSecret: secretsmanager.ISecret;
 
   constructor(scope: Construct, id: string, props: BackendDatabaseProps) {
     super(scope, id);
 
-    this.vpc = new ec2.Vpc(this, 'BackendVpc', {
-      maxAzs: 2,
-      natGateways: 0,
-      subnetConfiguration: [
-        {
-          name: 'backend-public',
-          subnetType: ec2.SubnetType.PUBLIC,
-        },
-        {
-          name: 'backend-db-isolated',
-          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-        },
-      ],
-    });
-
-    this.securityGroup = new ec2.SecurityGroup(this, 'DatabaseSecurityGroup', {
-      vpc: this.vpc,
-      description: 'Security group for backend PostgreSQL database',
-      allowAllOutbound: false,
-    });
-
-    this.lambdaSecurityGroup = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
-      vpc: this.vpc,
-      description: 'Security group for backend Lambda functions',
-      allowAllOutbound: true,
-    });
-
-    this.securityGroup.addIngressRule(
-      this.lambdaSecurityGroup,
-      ec2.Port.tcp(5432),
-      'Allow Lambda functions to access PostgreSQL',
-    );
-
     this.database = new rds.DatabaseInstance(this, 'BackendPostgresDatabase', {
       engine: rds.DatabaseInstanceEngine.postgres({
         version: rds.PostgresEngineVersion.VER_15_10,
       }),
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      vpc: this.vpc,
+      vpc: props.vpc,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
       },
-      securityGroups: [this.securityGroup],
+      securityGroups: [props.databaseSecurityGroup],
       multiAz: false,
       publiclyAccessible: false,
       allocatedStorage: 20,

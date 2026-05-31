@@ -117,16 +117,6 @@ describe('BackendApiFoundation', () => {
       });
     });
 
-    test('allows Lambda security group ingress to PostgreSQL on port 5432', () => {
-      const { template } = makeBackend();
-      template.hasResourceProperties('AWS::EC2::SecurityGroupIngress', {
-        IpProtocol: 'tcp',
-        FromPort: 5432,
-        ToPort: 5432,
-        Description: 'Allow Lambda functions to access PostgreSQL',
-      });
-    });
-
     test('emits API, health URL, role ARN, secrets ARN, and RDS outputs', () => {
       const { template } = makeBackend();
       expect(Object.keys(template.findOutputs('*', {

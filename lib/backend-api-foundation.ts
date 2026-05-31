@@ -8,6 +8,7 @@ import { Construct } from 'constructs';
 import { BackendApiFoundationProps } from '../props/backend-api-foundation-props';
 import { BackendBaseLambdaRole } from './backend/backend-base-lambda-role';
 import { BackendDatabase } from './backend/backend-database';
+import { BackendVpcConfig } from './backend/backend-vpc-config';
 import { BackendHealthCheck } from './backend/backend-health-check';
 import { BackendRestApi } from './backend/backend-rest-api';
 import { BackendSecrets } from './backend/backend-secrets';
@@ -37,7 +38,12 @@ export class BackendApiFoundation extends Construct {
     const secrets = new BackendSecrets(this, 'Secrets', { stackName });
     this.appSecrets = secrets.appSecrets;
 
-    const database = new BackendDatabase(this, 'Database', { stackName });
+    const vpc = new BackendVpcConfig(this, 'Vpc');
+    const database = new BackendDatabase(this, 'Database', {
+      stackName,
+      vpc: vpc.vpc,
+      databaseSecurityGroup: vpc.databaseSecurityGroup,
+    });
     this.database = database.database;
     this.databaseCredentialsSecret = database.databaseCredentialsSecret;
 
@@ -45,8 +51,8 @@ export class BackendApiFoundation extends Construct {
       stackName,
       role: this.baseLambdaRole,
       appSecrets: this.appSecrets,
-      vpc: database.vpc,
-      securityGroups: [database.lambdaSecurityGroup],
+      vpc: vpc.vpc,
+      securityGroups: [vpc.lambdaSecurityGroup],
     });
     this.healthFunction = health.healthFunction;
 
