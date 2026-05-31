@@ -10,6 +10,7 @@ export interface BackendHealthCheckProps {
   readonly role: iam.IRole;
   readonly appSecrets: secretsmanager.ISecret;
   readonly vpc: ec2.IVpc;
+  readonly lambdaSubnets: ec2.ISubnet[];
   readonly securityGroups: ec2.ISecurityGroup[];
 }
 
@@ -50,7 +51,7 @@ export class BackendHealthCheck extends Construct {
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
       vpc: props.vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      vpcSubnets: { subnets: props.lambdaSubnets },
       securityGroups: props.securityGroups,
       environment: {
         APP_SECRETS_ARN: props.appSecrets.secretArn,

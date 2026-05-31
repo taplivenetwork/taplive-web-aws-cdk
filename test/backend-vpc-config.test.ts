@@ -12,10 +12,17 @@ function makeVpcConfig() {
 }
 
 describe('BackendVpcConfig', () => {
-  test('creates a VPC with public, private egress, and isolated subnets', () => {
+  test('creates a VPC with public and isolated subnets plus dedicated Lambda egress subnets', () => {
     const template = makeVpcConfig();
     template.resourceCountIs('AWS::EC2::VPC', 1);
+    // 4 from Vpc (public + db-isolated) + 2 Lambda egress subnets at 10.0.128/160
     template.resourceCountIs('AWS::EC2::Subnet', 6);
+    template.hasResourceProperties('AWS::EC2::Subnet', {
+      CidrBlock: '10.0.128.0/19',
+    });
+    template.hasResourceProperties('AWS::EC2::Subnet', {
+      CidrBlock: '10.0.160.0/19',
+    });
   });
 
   test('creates one NAT gateway for Lambda outbound internet access', () => {

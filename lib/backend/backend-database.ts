@@ -11,6 +11,7 @@ export interface BackendDatabaseProps {
 
 export class BackendDatabase extends Construct {
   public readonly vpc: ec2.Vpc;
+  public readonly lambdaSubnets: ec2.ISubnet[];
   public readonly lambdaSecurityGroup: ec2.SecurityGroup;
   public readonly database: rds.DatabaseInstance;
   public readonly databaseCredentialsSecret: secretsmanager.ISecret;
@@ -21,6 +22,7 @@ export class BackendDatabase extends Construct {
     const vpcConfig = createBackendVpcConfig(this);
 
     this.vpc = vpcConfig.vpc;
+    this.lambdaSubnets = vpcConfig.lambdaSubnets;
     this.lambdaSecurityGroup = vpcConfig.lambdaSecurityGroup;
 
     this.database = new rds.DatabaseInstance(this, 'BackendPostgresDatabase', {
