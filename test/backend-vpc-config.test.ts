@@ -1,10 +1,13 @@
 import * as cdk from 'aws-cdk-lib/core';
+import { Construct } from 'constructs';
 import { Match, Template } from 'aws-cdk-lib/assertions';
-import { BackendVpcConfig } from '../lib/backend/backend-vpc-config';
+import { createBackendVpcConfig } from '../lib/backend/backend-vpc-config';
 
 function makeVpcConfig() {
   const stack = new cdk.Stack(new cdk.App(), 'TestStack');
-  new BackendVpcConfig(stack, 'Vpc');
+  // Match production path: TapliveBackendApiFoundation/Database/*
+  const database = new Construct(stack, 'Database');
+  createBackendVpcConfig(database);
   return Template.fromStack(stack);
 }
 
