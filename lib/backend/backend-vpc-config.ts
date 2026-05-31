@@ -9,13 +9,9 @@ export interface BackendVpcConfig {
   readonly lambdaSecurityGroup: ec2.SecurityGroup;
 }
 
-/**
- * CIDR blocks for Lambda egress subnets, outside the /19 slots used by the
- * original two-tier VPC layout (public + db-isolated at 10.0.0/19–10.0.96/19).
- * Adding PRIVATE_WITH_EGRESS to `subnetConfiguration` would reuse 10.0.64/96 and
- * conflict with existing isolated subnets on update.
- */
-const LAMBDA_EGRESS_SUBNET_CIDRS = ['10.0.128.0/19', '10.0.160.0/19'] as const;
+/** Secondary VPC CIDR — primary 10.0.0.0/16 is fully allocated by four /18 subnets in prod. */
+const LAMBDA_VPC_SECONDARY_CIDR = '10.1.0.0/16';
+const LAMBDA_EGRESS_SUBNET_CIDRS = ['10.1.0.0/24', '10.1.1.0/24'] as const;
 
 function findNatGateway(vpc: ec2.Vpc): ec2.CfnNatGateway {
   const natGateways = vpc.node
@@ -33,6 +29,7 @@ function createLambdaEgressSubnets(
   scope: Construct,
   vpc: ec2.Vpc,
   natGateway: ec2.CfnNatGateway,
+  secondaryCidr: ec2.CfnVPCCidrBlock,
 ): ec2.ISubnet[] {
   return vpc.availabilityZones.map((az, index) => {
     const subnet = new ec2.PrivateSubnet(scope, `LambdaPrivateSubnet${index + 1}`, {
@@ -42,6 +39,7 @@ function createLambdaEgressSubnets(
       mapPublicIpOnLaunch: false,
     });
 
+    subnet.node.addDependency(secondaryCidr);
     subnet.addRoute('DefaultRoute', {
       routerType: ec2.RouterType.NAT_GATEWAY,
       routerId: natGateway.attrNatGatewayId,
@@ -73,8 +71,13 @@ export function createBackendVpcConfig(scope: Construct): BackendVpcConfig {
     ],
   });
 
+  const secondaryCidr = new ec2.CfnVPCCidrBlock(scope, 'BackendVpcSecondaryCidr', {
+    vpcId: vpc.vpcId,
+    cidrBlock: LAMBDA_VPC_SECONDARY_CIDR,
+  });
+
   const natGateway = findNatGateway(vpc);
-  const lambdaSubnets = createLambdaEgressSubnets(scope, vpc, natGateway);
+  const lambdaSubnets = createLambdaEgressSubnets(scope, vpc, natGateway, secondaryCidr);
 
   const databaseSecurityGroup = new ec2.SecurityGroup(scope, 'DatabaseSecurityGroup', {
     vpc,

@@ -15,13 +15,16 @@ describe('BackendVpcConfig', () => {
   test('creates a VPC with public and isolated subnets plus dedicated Lambda egress subnets', () => {
     const template = makeVpcConfig();
     template.resourceCountIs('AWS::EC2::VPC', 1);
-    // 4 from Vpc (public + db-isolated) + 2 Lambda egress subnets at 10.0.128/160
+    // 4 from Vpc (public + db-isolated) + 2 Lambda egress /24 on secondary CIDR
     template.resourceCountIs('AWS::EC2::Subnet', 6);
-    template.hasResourceProperties('AWS::EC2::Subnet', {
-      CidrBlock: '10.0.128.0/19',
+    template.hasResourceProperties('AWS::EC2::VPCCidrBlock', {
+      CidrBlock: '10.1.0.0/16',
     });
     template.hasResourceProperties('AWS::EC2::Subnet', {
-      CidrBlock: '10.0.160.0/19',
+      CidrBlock: '10.1.0.0/24',
+    });
+    template.hasResourceProperties('AWS::EC2::Subnet', {
+      CidrBlock: '10.1.1.0/24',
     });
   });
 
