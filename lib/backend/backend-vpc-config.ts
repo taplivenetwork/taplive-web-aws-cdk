@@ -4,8 +4,52 @@ import { Construct } from 'constructs';
 /** VPC, subnets, NAT, and security groups for the backend. */
 export interface BackendVpcConfig {
   readonly vpc: ec2.Vpc;
+  readonly lambdaSubnets: ec2.ISubnet[];
   readonly databaseSecurityGroup: ec2.SecurityGroup;
   readonly lambdaSecurityGroup: ec2.SecurityGroup;
+}
+
+/**
+ * CIDR blocks for Lambda egress subnets, outside the /19 slots used by the
+ * original two-tier VPC layout (public + db-isolated at 10.0.0/19–10.0.96/19).
+ * Adding PRIVATE_WITH_EGRESS to `subnetConfiguration` would reuse 10.0.64/96 and
+ * conflict with existing isolated subnets on update.
+ */
+const LAMBDA_EGRESS_SUBNET_CIDRS = ['10.0.128.0/19', '10.0.160.0/19'] as const;
+
+function findNatGateway(vpc: ec2.Vpc): ec2.CfnNatGateway {
+  const natGateways = vpc.node
+    .findAll()
+    .filter((child): child is ec2.CfnNatGateway => child instanceof ec2.CfnNatGateway);
+
+  if (natGateways.length !== 1) {
+    throw new Error(`Expected exactly one NAT gateway in VPC, found ${natGateways.length}`);
+  }
+
+  return natGateways[0]!;
+}
+
+function createLambdaEgressSubnets(
+  scope: Construct,
+  vpc: ec2.Vpc,
+  natGateway: ec2.CfnNatGateway,
+): ec2.ISubnet[] {
+  return vpc.availabilityZones.map((az, index) => {
+    const subnet = new ec2.PrivateSubnet(scope, `LambdaPrivateSubnet${index + 1}`, {
+      vpcId: vpc.vpcId,
+      availabilityZone: az,
+      cidrBlock: LAMBDA_EGRESS_SUBNET_CIDRS[index]!,
+      mapPublicIpOnLaunch: false,
+    });
+
+    subnet.addRoute('DefaultRoute', {
+      routerType: ec2.RouterType.NAT_GATEWAY,
+      routerId: natGateway.attrNatGatewayId,
+      enablesInternetConnectivity: true,
+    });
+
+    return subnet;
+  });
 }
 
 /**
@@ -23,15 +67,14 @@ export function createBackendVpcConfig(scope: Construct): BackendVpcConfig {
         subnetType: ec2.SubnetType.PUBLIC,
       },
       {
-        name: 'backend-lambda-private',
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-      },
-      {
         name: 'backend-db-isolated',
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
       },
     ],
   });
+
+  const natGateway = findNatGateway(vpc);
+  const lambdaSubnets = createLambdaEgressSubnets(scope, vpc, natGateway);
 
   const databaseSecurityGroup = new ec2.SecurityGroup(scope, 'DatabaseSecurityGroup', {
     vpc,
@@ -51,5 +94,5 @@ export function createBackendVpcConfig(scope: Construct): BackendVpcConfig {
     'Allow Lambda functions to access PostgreSQL',
   );
 
-  return { vpc, databaseSecurityGroup, lambdaSecurityGroup };
+  return { vpc, lambdaSubnets, databaseSecurityGroup, lambdaSecurityGroup };
 }
